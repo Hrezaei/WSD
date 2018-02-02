@@ -53,7 +53,7 @@ def buildGraphBasedOnShortest(candids, graph, flat_syns=False):
                     try:
                         path = nx.shortest_path(graph, source_syn, target_syn)
                         for syn_id in path:
-                            g.add_node(id, Value=graph.node[id]['Value'] + ';' + id)
+                            g.add_node(syn_id, Value=graph.node[syn_id]['Value'] + ';' + syn_id)
                         try:
                             g.add_path(path)#src, dst, Relation=graph.edges[(src, dst)]['Relation'])
                         except:
