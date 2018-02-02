@@ -22,7 +22,11 @@ $r=[];
 if ($result->num_rows > 0) {
     // output data of each row
     while($row = $result->fetch_assoc()) {
-        $r[] =  $row;
+        $r[intval($row['id'])] =  [
+            'id' => intval($row['id']),
+            'example' => $row['example'],
+            'senses_snapshot' => $row['senses_snapshot']
+        ];
     }
 } else {
     echo "0 results";
@@ -30,6 +34,6 @@ if ($result->num_rows > 0) {
 
 $j = json_encode($r, JSON_UNESCAPED_UNICODE);
 //print_r($r);
-file_put_contents("/tmp/farsnetWSDDataset.json", $j);
+file_put_contents("/tmp/all_synsets.json", $j);
 $conn->close();
 ?>

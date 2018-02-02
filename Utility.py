@@ -18,3 +18,14 @@ def write_file(path, content, append=False):
     f_file.close()
 
 
+def prepare_wordnet(name=None, lang=None):
+    if name == 'Farsnet' or lang == 'fa':
+        from Farsnet import Farsnet
+        wordnet = Farsnet()
+    elif name == 'Wordnet' or lang == 'en':
+        from Wordnet import Wordnet
+        wordnet = Wordnet()
+    else:
+        print('Dataset/Language "{}"/"{}" not found!'.format(name, lang))
+        exit(5)
+    return wordnet

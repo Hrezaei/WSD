@@ -6,7 +6,7 @@ os.environ.setdefault('PATH', '')
 import networkx as nx
 import time
 
-def CsvExport(graph,id=1):
+def CsvExport(graph, id=1):
     dir = os.path.dirname("export")
     if not os.path.exists(dir):
         os.makedirs(dir)

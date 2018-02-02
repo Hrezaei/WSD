@@ -1,10 +1,7 @@
 
-from Preprocess import remove_stop_words
-from hazm import *
-from Farsnet import fetch_synsets, fetch_definition
+
 from Navigli import buildGraph, buildGraphBasedOnShortest
-from Importer import importFromPaj
-from Utility import tagger, normalizer, stemmer, read_file, write_file
+from Utility import write_file, prepare_wordnet
 import re
 import sys
 import json
@@ -13,13 +10,11 @@ from networkx import algorithms
 from networkx.algorithms.link_analysis import hits_alg
 
 
-FarsNet = importFromPaj("resources/synset_relation.paj")
-#FarsNet = importFromPaj("resources/synset_related_to.paj")
-#FarsNet = importFromPaj("resources/synset_hypernyms.paj")
 
-def run_wsd(sentence, verbose=False, exportName=False):
+
+def run_wsd(sentence, wordnet, verbose=False, exportName=False):
     if isinstance(sentence, str):
-        all_syns, candid_syns = extract_synsets(sentence)
+        all_syns, candid_syns = wordnet.extract_synsets(sentence)
     elif isinstance(sentence, tuple):
         (all_syns, candid_syns) = sentence
     teleport_set = {}
@@ -29,10 +24,10 @@ def run_wsd(sentence, verbose=False, exportName=False):
 
     L = 3
     #g = buildGraph(all_syns, FarsNet, L)
-    g = buildGraphBasedOnShortest(candid_syns, FarsNet, all_syns)
+    g = buildGraphBasedOnShortest(candid_syns, wordnet.graph(), all_syns)
 
     if exportName != False:
-        nx.write_gexf(g, 'export/' + exportName + '.gexf')
+        nx.write_gexf(g, 'export/' + wordnet.name + '/' + str(exportName) + '.gexf')
     if verbose:
         print("nodes:{} edges:{} teleport:{}".format(len(g.nodes()), len(g.edges()), len(teleport_set)))
 
@@ -62,7 +57,7 @@ def run_wsd(sentence, verbose=False, exportName=False):
                 continue
             rank = ranks[syn_id]
             if verbose:
-                definition = fetch_definition(syn_id)[0]
+                definition = wordnet.fetch_definition(syn_id)
                 definition['rank'] = rank
                 ranks_report[key].append(definition)
             if rank > max_rank:
@@ -79,46 +74,28 @@ def run_wsd(sentence, verbose=False, exportName=False):
     return elected
 
 
-def extract_synsets(sentence):
-    sentence = normalizer.normalize(sentence)
-    sentence = re.sub(r'[^\w\s\u200c]', '', sentence)
-    words = word_tokenize(sentence)
-    words = remove_stop_words(words)
-    tags = tagger.tag(words)
-    candid_syns = {}
-    all_syns = []
-    for (w, tag) in tags:
-        syns = fetch_synsets(w, tag)
-        if len(syns) == 0:
-            root = stemmer.stem(w)
-            if root is not "" and root != w:
-                syns = fetch_synsets(root, tag)
-        if len(syns) > 0:
-            candid_syns[w + '_' + tag] = syns
-        for s in syns:
-            all_syns.append(str(s))
-    return all_syns, candid_syns
 
-
-def find_ambig_by_id(syn_id):
-    samples = json.loads(read_file('resources/FNWords2.json'))
-    for item in samples:
-        if item['id'] == str(syn_id):
-            return item
 
 electeds = []
 candids = []
 if len(sys.argv) > 2:
-    if sys.argv[1] == 'sen':
-        electeds, report = run_wsd(sys.argv[2], True)
+    command = sys.argv[1]
+    if command == 'sen':
+        from langdetect import detect
+        input_sentence = sys.argv[2]
+        lang = detect(input_sentence)
+        wordnet = prepare_wordnet(lang=lang)
+        electeds, report = run_wsd(input_sentence, wordnet, True, 'last_debug')
         print(electeds)
         print(report)
     elif sys.argv[1] == 'debug':
         syn_id = sys.argv[2]
-        item = find_ambig_by_id(syn_id)
-        if item != None:
+        dataset_name = sys.argv[3]
+        wordnet = prepare_wordnet(dataset_name)
+        item = wordnet.find_ambig_by_id(syn_id)
+        if item is not None:
             all_syns = [str(j) for k in item['words'] for j in item['words'][k]]
-            electeds, report = run_wsd((all_syns, item['words']), True, syn_id)
+            electeds, report = run_wsd((all_syns, item['words']), wordnet, True, syn_id)
             write_file('debug/' + syn_id + '.json', json.dumps((item['example'], electeds, report), ensure_ascii=False, indent=4))
             from subprocess import call
             call(["code", 'debug/' + syn_id + '.json'])
