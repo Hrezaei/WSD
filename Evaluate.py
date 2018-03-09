@@ -14,16 +14,16 @@ dataset = sys.argv[1]
 wordnet = prepare_wordnet(dataset)
 
 test_set_size = 100
-ambs = json.loads(read_file('resources/' + dataset + '/ambigs.json'))
+#ambs = json.loads(read_file('resources/' + dataset + '/ambigs.json'))
 #ambs = json.loads(read_file('resources/certains.json'))
-test_set_keys = np.random.choice(list(ambs.keys()), test_set_size, False)
-test_set = []
-for key in test_set_keys:
-    test_set.append(ambs[key])
+#test_set_keys = np.random.choice(list(ambs.keys()), test_set_size, False)
+#test_set = []
+#for key in test_set_keys:
+#    test_set.append(ambs[key])
 #test_set = ambs[:test_set_size]
 
-#write_file('debug/last_test_set2.json', json.dumps(list(test_set), ensure_ascii=False))
-#test_set = json.loads(read_file('debug/last_test_set2.json'))
+#write_file('debug/' + dataset + '/last_test_set.json', json.dumps(list(test_set), ensure_ascii=False))
+test_set = json.loads(read_file('debug/' + dataset + '/last_test_set.json'))
 
 total_true = 0
 i = 0
@@ -54,7 +54,7 @@ for item in test_set:
     success = item['id'] == answer[item['ambig_word']]
     if success:
         total_true += 1
-        print("{}/{} id:{} OK".format(total_true, i, item['id'], item['example']))
+        print("{}/{} id:{} OK".format(total_true, i, item['id']))
     else:
         print("{}/{} on:{} id:{}  :(".format(total_true, i, item['ambig_word'], item['id']), item['example'])
 

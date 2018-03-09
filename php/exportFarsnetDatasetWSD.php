@@ -15,7 +15,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 } 
 $result = $conn->query("SET NAMES utf8;");
-$sql = "SELECT id, example, senses_snapshot FROM `synset` where reviseResult = \"ACCEPTED\" and length(example)>50 ";
+$sql = "SELECT id, example, senses_snapshot, gloss FROM `synset` where reviseResult = \"ACCEPTED\" ";
 $result = $conn->query($sql);
 $r=[];
 //echo $result->num_rows;
@@ -25,7 +25,8 @@ if ($result->num_rows > 0) {
         $r[intval($row['id'])] =  [
             'id' => intval($row['id']),
             'example' => $row['example'],
-            'senses_snapshot' => $row['senses_snapshot']
+            'senses_snapshot' => $row['senses_snapshot'],
+            'gloss' => $row['gloss']
         ];
     }
 } else {

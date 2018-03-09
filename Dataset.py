@@ -1,6 +1,6 @@
 import json
 from Utility import read_file, write_file, prepare_wordnet
-
+import sys
 
 def find_ambiguous_examples(name):
     base_path = 'resources/' + name + '/'
@@ -14,28 +14,37 @@ def find_ambiguous_examples(name):
     parsed = json.loads(read_file(processed_path))
     wordnet = prepare_wordnet(name)
     i = 0
+    j = len(parsed)
     for syn_id in dataset_synsets:
+        j += 1
         item = dataset_synsets[syn_id]
         if syn_id in parsed or 'example' not in item:
             continue
         i += 1
         example = item['example']
         for sentence in example.split('*'):
-            if len(sentence) < 30:
-                continue
             entry = item.copy()
             all_syns, candid_syns = wordnet.extract_synsets(sentence)
             entry['example'] = sentence
             entry['words'] = candid_syns
+            #@todo: @bug: If an example contains "*", current code only keeps the last sentence
+            output[syn_id] = entry
+            if len(sentence) < 30:
+                continue
+            #If a long enough example has more than one meaning for the word that is 
+            #representative of syn_id(sense_snapshot), it is a good item for wsd dataset:
             for key in candid_syns:
                 if int(syn_id) in candid_syns[key] and len(candid_syns[key]) > 1:
                     entry['ambig_word'] = key
+                    #@todo: @bug: If an example contains "*", current code only keeps the last sentence
                     ambigs[syn_id] = entry
-            output[syn_id] = entry
+                    #We found anchor word, do not iterate over other words of the example
+                    break
+            
         parsed.append(syn_id)
         if(i % 10) == 0:
-            print("Parsed {} examples, {} ambigs found".format(i, len(ambigs)))
-        if i > 2000:
+            print("Parsed {} examples, {} ambigs found".format(j, len(ambigs)))
+        if i > 2500:
             break
     write_file(words_path, json.dumps(output, ensure_ascii=False))
     write_file(ambigs_path, json.dumps(ambigs, ensure_ascii=False))
@@ -67,11 +76,41 @@ def find_almost_certain_examples(name):
     print(len(ambigs), certain_sens, sum(num_certains))
     write_file('resources/' + name + '/certains.json', json.dumps(certain_examples, ensure_ascii=False))
 
-
+def find_gloss_relations(name):
+    base_path = 'resources/' + name + '/'
+    words_path = base_path + 'all_synsets.json'
+    relations_path = base_path + 'gloss_relations.json'
+    processed_path = base_path + 'gloss_parsed.json'
+    parsed_synsets = json.loads(read_file(words_path))
+    wordnet = prepare_wordnet(name)
+    relations = json.loads(read_file(relations_path))
+    processed_syns = json.loads(read_file(processed_path))
+    i = 0
+    j = len(processed_syns)
+    for syn_id in parsed_synsets:
+        j += 1
+        if syn_id in processed_syns:
+            continue
+        processed_syns.append(syn_id)
+        i += 1
+        syn_data = parsed_synsets[syn_id]
+        temp, words = wordnet.extract_synsets(syn_data['gloss'])
+        for word_tag in words:
+            if len(words[word_tag]) == 1:
+                relations.append((syn_id, str(words[word_tag][0])))
+        if i % 10 == 0:
+            print('{} relations found so far(iteration:{})'.format(len(relations), j))
+        if i > 150:
+            break
+    write_file(relations_path, json.dumps(relations))
+    write_file(processed_path, json.dumps(processed_syns))
+    print("{} gloss relations found and written to {} folder".format(len(relations), name))
 
 
 
 
 #find_almost_certain_examples('Wordnet')
-find_ambiguous_examples('Farsnet')
-
+if len(sys.argv) > 1 and sys.argv[1] == 'amb':
+    find_ambiguous_examples('Wordnet')
+else:
+    find_gloss_relations('Wordnet')

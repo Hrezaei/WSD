@@ -23,8 +23,8 @@ def run_wsd(sentence, wordnet, verbose=False, exportName=False):
             teleport_set[candid_syns[k][0]] = 10
 
     L = 3
-    #g = buildGraph(all_syns, FarsNet, L)
-    g = buildGraphBasedOnShortest(candid_syns, wordnet.graph(), all_syns)
+    g = buildGraph(all_syns, wordnet.graph(), L)
+    #g = buildGraphBasedOnShortest(candid_syns, wordnet, all_syns)
 
     if exportName != False:
         nx.write_gexf(g, 'export/' + wordnet.name + '/' + str(exportName) + '.gexf')
@@ -36,7 +36,10 @@ def run_wsd(sentence, wordnet, verbose=False, exportName=False):
     ranks_pr = nx.pagerank(g)
     if len(teleport_set) > 0:
         ranks_pr = nx.pagerank(g, personalization=teleport_set)
-
+#    try:
+#        flow_ranks = nx.approximate_current_flow_betweenness_centrality(g)    
+#    except :
+#        pass
     #hits = {}
     #try:
     #    hits = hits_alg.hits(g, max_iter=1000)[0]
@@ -87,7 +90,11 @@ if len(sys.argv) > 2:
         wordnet = prepare_wordnet(lang=lang)
         electeds, report = run_wsd(input_sentence, wordnet, True, 'last_debug')
         print(electeds)
-        print(report)
+        #print(report)
+        write_file('/tmp/last_sen.json',
+                   json.dumps((input_sentence, electeds, report), ensure_ascii=False, indent=4))
+        from subprocess import call
+        call(["code", '/tmp/last_sen.json'])
     elif sys.argv[1] == 'debug':
         syn_id = sys.argv[2]
         dataset_name = sys.argv[3]

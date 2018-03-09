@@ -34,14 +34,22 @@ class Farsnet:
         'ADVe': 'Adverb'
     }
 
-    _graph = {}
+    _graph = None
     _ambigs = None
+    _corpus = None
 
     def graph(self):
-        if self._graph == {}:
-            self._graph = importFromPaj("resources/Farsnet/synset_relation.paj")
+        if self._graph is None:
+            import networkx as nx
+            self._graph = nx.Graph()
+            #self._graph = importFromPaj("resources/Farsnet/synset_relation.paj")
             #self._graph = importFromPaj("resources/Farsnet/synset_related_to.paj")
             #self._graph = importFromPaj("resources/Farsnet/synset_hypernyms.paj")
+            gloss_relations = json.loads(read_file('resources/Farsnet/gloss_relations.json'))
+            for (src, dst) in gloss_relations:
+                self._graph.add_node(src, Value=self.senses_snapshot(src) + ';' + src)
+                self._graph.add_node(dst, Value=self.senses_snapshot(dst) + ';' + dst)
+                self._graph.add_edge(src, dst, Relation='gloss')
         return self._graph
 
     def extract_synsets(self, sentence):
@@ -73,7 +81,7 @@ class Farsnet:
         #    return []
         pos = self.tag_map[tag]
         w = re.sub(r'[ی]', 'ي', w)
-        query = "SELECT id FROM synset WHERE pos=\"" + pos + "\" and id IN (SELECT synset FROM  sense WHERE  value LIKE  \"" + w + "\")"
+        query = "SELECT id FROM synset WHERE reviseResult = \"ACCEPTED\" and pos=\"" + pos + "\" and id IN (SELECT synset FROM  sense WHERE  value LIKE  \"" + w + "\")"
         self.cur.execute(query)
 
         output = []
@@ -99,6 +107,14 @@ class Farsnet:
 
     #v=fetch_synsets('دفتر', 'N')
     #print(v)
+
+    def senses_snapshot(self, syn_id):
+        if self._corpus is None:
+            self._corpus = json.loads(read_file('resources/Farsnet/all_synsets.json'))
+        if syn_id in self._corpus:
+            return self._corpus[syn_id]['senses_snapshot']
+        return ''
+
 
     def find_ambig_by_id(self, syn_id):
         if self._ambigs is None:

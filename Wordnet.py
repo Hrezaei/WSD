@@ -20,6 +20,7 @@ class Wordnet:
     _graph = {}
     _synsets = {}
     _ambigs = {}
+    _corpus = None
 
     def graph(self):
         if self._graph == {}:
@@ -112,8 +113,14 @@ class Wordnet:
             # fp = open('resources/Wordnet/words.json', '+w')
             # self._synsets = json.load(fp)
             self._ambigs = json.loads(read_file('resources/Wordnet/ambigs.json'))
-        return self._ambigs[int(syn_id)]
+        return self._ambigs[syn_id]
 
+    def senses_snapshot(self, syn_id):
+        if self._corpus is None:
+            self._corpus = json.loads(read_file('resources/Wordnet/all_synsets.json'))
+        if syn_id in self._corpus:
+            return self._corpus[syn_id]['senses_snapshot']
+        return ''
 #s = Wordnet()
 #s.generateDataset()
 #s.export_paj()
