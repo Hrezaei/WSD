@@ -44,7 +44,7 @@ def find_ambiguous_examples(name):
         parsed.append(syn_id)
         if(i % 10) == 0:
             print("Parsed {} examples, {} ambigs found".format(j, len(ambigs)))
-        if i > 2500:
+        if i > 200:
             break
     write_file(words_path, json.dumps(output, ensure_ascii=False))
     write_file(ambigs_path, json.dumps(ambigs, ensure_ascii=False))

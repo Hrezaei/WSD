@@ -15,7 +15,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 } 
 $result = $conn->query("SET NAMES utf8;");
-$sql = "SELECT id, example, senses_snapshot, gloss FROM `synset` where reviseResult = \"ACCEPTED\" ";
+$sql = "SELECT id, example, senses_snapshot, gloss FROM `synset` where reviseResult = \"ACCEPTED\" and length(example)>50 ";
 $result = $conn->query($sql);
 $r=[];
 //echo $result->num_rows;

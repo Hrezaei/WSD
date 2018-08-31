@@ -29,3 +29,4 @@ def prepare_wordnet(name=None, lang=None):
         print('Dataset/Language "{}"/"{}" not found!'.format(name, lang))
         exit(5)
     return wordnet
+
