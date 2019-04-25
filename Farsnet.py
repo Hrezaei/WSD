@@ -1,6 +1,5 @@
 import MySQLdb
 import re
-from Importer import importFromPaj
 import json
 from Utility import tagger, normalizer, stemmer, read_file
 from Preprocess import remove_stop_words
@@ -15,7 +14,7 @@ class Farsnet:
     db = MySQLdb.connect(host="localhost",  # your host
                          user="root",       # username
                          passwd="12345",     # password
-                         db="farsnet")
+                         db="parsisnlp")
     db.set_character_set('utf8')
     cur = db.cursor()
 
@@ -72,6 +71,26 @@ class Farsnet:
                 all_syns.append(str(s))
         return all_syns, candid_syns
 
+    def extract_synsets_for_api(self, sentence):
+        sentence = normalizer.normalize(sentence)
+        sentence = re.sub(r'[^\w\s\u200c]', '', sentence)
+        words = word_tokenize(sentence)
+        words = remove_stop_words(words)
+        tags = tagger.tag(words)
+        candid_syns = {}
+        for (w, tag) in tags:
+            syns = self.fetch_synsets_for_api(w, tag)
+            if len(syns) == 0:
+                root = stemmer.stem(w)
+                if root is not "" and root != w:
+                    syns = self.fetch_synsets_for_api(root, tag)
+            if len(syns) > 0:
+                candid_syns[w] = {
+                    'tag': tag,
+                    'synsets': syns
+                }
+        return candid_syns
+
     def fetch_synsets(self, w, tag):
         """ Loads all synset ids of given word having given pos tag.
         tag should be from Hazm tagset"""
@@ -87,6 +106,27 @@ class Farsnet:
         output = []
         for row in self.cur.fetchall():
             output.append(row[0])
+        return output
+
+
+    def fetch_synsets_for_api(self, w, tag):
+        """ Loads all synset ids of given word having given pos tag.
+        tag should be from Hazm tagset"""
+        if tag in ['PUNC', 'CONJe', 'RESe', 'DETe', 'Pe', 'DET', 'NUM', 'CL', 'P', 'NUMe', 'RES', 'CONJ', 'PRO', 'POSTP', 'INT']:
+            return []
+        #if tag not in tag_map:
+        #    return []
+        pos = self.tag_map[tag]
+        w = re.sub(r'[ی]', 'ي', w)
+        query = "SELECT id, senses_snapshot, gloss FROM synset WHERE reviseResult = \"ACCEPTED\" and pos=\"" + pos + "\" and id IN (SELECT synset FROM  sense WHERE  value LIKE  \"" + w + "\")"
+        self.cur.execute(query)
+
+        output = {}
+        for row in self.cur.fetchall():
+            output[row[0]] = {
+                'definition': row[2],
+                'snapshot': row[1]
+            }
         return output
 
     def fetch_definition(self, syn):

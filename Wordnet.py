@@ -13,7 +13,7 @@ class Wordnet:
         'ADJ': wn.ADJ,
         'NOUN': wn.NOUN,
         'VERB': wn.VERB,
-        #'NUM': wn.NUM,
+        'NUM': wn.NOUN,
         'ADV': wn.ADV
     }
 
@@ -55,6 +55,22 @@ class Wordnet:
             output.append(syn.offset())
         return output
 
+    def fetch_synsets_for_api(self, w, tag):
+        """ Loads all synset ids of given word having given pos tag.
+        tag should be from Wordnet tagset"""
+        if tag not in self.tag_map:
+            #print(w + ' UNKNOWN TAG:' + tag)
+            return []
+        pos = self.tag_map[tag]
+        synsets = wn.synsets(w, pos=pos)
+        output = {}
+        for syn in synsets:
+            output[syn.offset()] = {
+                'definition': syn.definition(),
+                'snapshot': ", ".join(syn.lemma_names())
+            }
+        return output
+
     def fetch_definition(self, syn_id):
         if self._synsets == {}:
             # fp = open('resources/Wordnet/words.json', '+w')
@@ -81,6 +97,56 @@ class Wordnet:
                 candid_syns[w + '_' + tag] = syns
             for s in syns:
                 all_syns.append(str(s))
+        return all_syns, candid_syns
+
+    def extract_synsets_for_api(self, sentence):
+        words = nltk.word_tokenize(sentence)
+        stop_words = set(stopwords.words('english'))
+        words = [w for w in words if w not in stop_words]
+        tags = nltk.pos_tag(words, tagset='universal')
+        porter = nltk.PorterStemmer()
+        candid_syns = {}
+        for (w, tag) in tags:
+            #tag = self.tag_map[tag]
+            syns = self.fetch_synsets_for_api(w, tag)
+            if len(syns) == 0:
+                root = porter.stem(w)
+                if root is not "" and root != w:
+                    syns = self.fetch_synsets_for_api(root, tag)
+            if len(syns) > 0:
+                candid_syns[w] = {
+                    'tag': tag,
+                    'synsets': syns
+                }
+
+        return candid_syns
+
+    def extract_synset_objects(self, sentence):
+        words = nltk.word_tokenize(sentence)
+        stop_words = set(stopwords.words('english'))
+        words = [w for w in words if w not in stop_words]
+        tags = nltk.pos_tag(words, tagset='universal')
+        porter = nltk.PorterStemmer()
+        candid_syns = {}
+        all_syns = []
+        for (w, tag) in tags:
+            #tag = self.tag_map[tag]
+            if tag not in self.tag_map:
+                continue
+            syns = wn.synsets(w, self.tag_map[tag])
+            if len(syns) == 0:
+                root = porter.stem(w)
+                if root is not "" and root != w:
+                    syns = wn.synsets(root, self.tag_map[tag])
+            if len(syns) > 0:
+                candid_syns[w + '_' + tag] = []
+                for s in syns:
+                    candid_syns[w + '_' + tag].append({
+                        'syn': s,
+                        'weight': 1/len(syns)
+                    })
+            for s in syns:
+                all_syns.append(s)
         return all_syns, candid_syns
 
     def export_paj(self):
@@ -121,6 +187,27 @@ class Wordnet:
         if syn_id in self._corpus:
             return self._corpus[syn_id]['senses_snapshot']
         return ''
+
+    def exportAllExamples(self):
+        dataset = {}
+        import MySQLdb
+        db = MySQLdb.connect(host="localhost",  # your host
+                             user="root",  # username
+                             passwd="12345",  # password
+                             db="parsisnlp")
+        db.set_character_set('utf8')
+        cur = db.cursor()
+        cur.execute('SET NAMES utf8;')
+        i=0
+        for syn in list(wn.all_synsets()):
+            for example in syn.examples():
+                cur.execute('Insert into wsd_examples_en (sentence, num_ambig_words) values (%s, %s)',   (example, 0))
+                print(i)
+                i += 1
+        db.commit()
+
+
+
 #s = Wordnet()
 #s.generateDataset()
 #s.export_paj()

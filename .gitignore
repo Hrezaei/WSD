@@ -1,2 +1,3 @@
-debug/*
-export/*
+/debug/
+/export/
+/__pycache__/
